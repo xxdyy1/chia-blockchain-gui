@@ -19,6 +19,7 @@ This report re-audits blocks 1–4 using HackerOne severity labels and adds bloc
 - `rg -n "bypassCommands|GET_BYPASS_COMMANDS|SET_BYPASS_COMMANDS" packages/gui/src`
 - `rg -n "cacheFolder|maxCacheSize|setCacheDirectory" packages/gui/src/electron`
 - `rg -n "openReactDialog|dialog:init|will-navigate" packages/gui/src/electron`
+- `rg -n "openExternal|LinkAPI|downloadURL|SHOW_OPEN_FILE_DIALOG_AND_READ|SHOW_SAVE_DIALOG_AND_SAVE" packages/gui/src/electron`
 
 ## Block 1: Electron IPC / Network / Process Execution (HackerOne ratings)
 
@@ -365,3 +366,67 @@ This section filters prior findings to those most likely to qualify for HackerOn
 5. Demonstrate exfiltration by printing the values or sending them to a mock endpoint.
 
 **Impact:** Exposure of secret key material enables unauthorized funds transfer.
+
+## Block 19: Low Findings – Escalation Paths (HackerOne ratings)
+
+This section explores whether any Low findings could be escalated (e.g., bypassing user interaction or increasing impact). Where escalation is not viable, it is explicitly noted.
+
+### 19.1 File dialog read/write IPC (Block 13.1) – escalation analysis
+
+**Current severity:** Low
+
+**Escalation attempt:** Bypass user interaction for file access.
+
+**Analysis:** The IPC handlers rely on native file dialogs (`showOpenDialog` / `showSaveDialog`) and return early when a user cancels. There is no path for the renderer to supply a file path directly. Without OS-level UI automation or additional vulnerabilities, user interaction cannot be bypassed.
+
+**Conclusion:** **No escalation found** within this repo; remains Low unless combined with external UI automation or OS-level compromise.
+
+### 19.2 Download IPC (Block 13.2) – escalation analysis
+
+**Current severity:** Low
+
+**Escalation attempt:** Achieve silent download or execution without user interaction.
+
+**Analysis:** The download flow triggers Chromium’s download manager and, for multi-download, requires a user-selected folder. There is no code path that auto-executes downloaded files. Without additional execution paths, this remains a user-impacting nuisance rather than a direct compromise.
+
+**Conclusion:** **No escalation found** in this repo; stays Low.
+
+### 19.3 `openExternal` without validation (Block 13.3 / Block 17.1) – escalation analysis
+
+**Current severity:** Low
+
+**Escalation attempt:** Trigger arbitrary protocol handlers or local file execution.
+
+**Analysis:** Main-process `openExternal` does not validate URL schemes. If a compromised renderer can pass a non-HTTP(S) scheme (e.g., `file://`, custom protocol), the OS may route it to a handler. However, the actual impact depends on OS policy and registered protocol handlers; the repo does not explicitly enable custom protocol handlers for arbitrary schemes.
+
+**Conclusion:** **Potential escalation depends on OS/protocol handlers**; in-repo impact remains Low without a known vulnerable protocol handler.
+
+### 19.4 Cache directory management (Block 16.1) – escalation analysis
+
+**Current severity:** Low
+
+**Escalation attempt:** Deleting arbitrary user files without interaction.
+
+**Analysis:** Cache directory changes still require a user-selected folder. Pruning only deletes files matching cache suffixes within the selected directory. There is no path for the renderer to specify an arbitrary folder without a user picking it.
+
+**Conclusion:** **No escalation found** in this repo; remains Low.
+
+### 19.5 Preferences/address book writes (Block 14.1) – escalation analysis
+
+**Current severity:** Low
+
+**Escalation attempt:** Overwrite configuration to enable broader compromise.
+
+**Analysis:** Preferences and address book are stored as YAML in user data. These values influence UI behavior but do not directly introduce code execution. Without another vulnerability that interprets these files as executable content, the impact is limited to data integrity.
+
+**Conclusion:** **No escalation found**; remains Low.
+
+### 19.6 Bypass command preferences (Block 15.1) – escalation analysis
+
+**Current severity:** Low
+
+**Escalation attempt:** Persist malicious bypasses without user consent.
+
+**Analysis:** The main process validates commands and forces a confirmation dialog before persisting changes. Without a separate UI spoofing or clickjacking vulnerability, bypassing the confirmation is not possible.
+
+**Conclusion:** **No escalation found**; remains Low unless combined with UI deception or external compromise.
