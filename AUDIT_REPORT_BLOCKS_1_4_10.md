@@ -18,6 +18,7 @@ This report re-audits blocks 1–4 using HackerOne severity labels and adds bloc
 - `rg -n "readPrefs|savePrefs|readAddressBook|saveAddressBook|prefs.yaml|contacts.yaml" packages/gui/src`
 - `rg -n "bypassCommands|GET_BYPASS_COMMANDS|SET_BYPASS_COMMANDS" packages/gui/src`
 - `rg -n "cacheFolder|maxCacheSize|setCacheDirectory" packages/gui/src/electron`
+- `rg -n "openReactDialog|dialog:init|will-navigate" packages/gui/src/electron`
 
 ## Block 1: Electron IPC / Network / Process Execution (HackerOne ratings)
 
@@ -283,3 +284,17 @@ Cache management allows the renderer to trigger a cache directory change (via a 
 - `SET_MAX_CACHE_SIZE` triggers cache pruning which deletes cache files by suffix in the active cache directory.
 
 **Impact:** Potential local data loss of files with cache suffixes in a user-selected directory; requires user interaction.
+
+## Block 17: Dialog Navigation and External Links (HackerOne ratings)
+
+### 17.1 Dialog windows route external navigation to `openExternal` without URL validation
+
+**Severity:** Low
+
+The dialog window intercepts navigation and forwards external URLs to `openExternal`. The handler itself does not validate the URL, so a compromised dialog context could attempt to open arbitrary URLs when a navigation event fires.
+
+**Evidence:**
+
+- `openReactDialog` listens for `will-navigate` and calls `openExternal(url)` when navigating away from the current dialog URL.
+
+**Impact:** Potential for arbitrary external URL launching from a compromised dialog context; mitigated by CSP and sandboxing but still a low-risk vector for user-directed navigation.
